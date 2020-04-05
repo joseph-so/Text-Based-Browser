@@ -35,3 +35,14 @@ Twitter and Square Chief Executive Officer Jack Dorsey
 '''
 
 # write your code here
+url = input()
+
+while url != "exit":
+
+    if url == "bloomberg.com":
+        print(bloomberg_com)
+
+    if url == "nytimes.com":
+        print(nytimes_com)
+
+    url = input()
