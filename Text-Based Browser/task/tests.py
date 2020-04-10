@@ -2,6 +2,9 @@ from hstest.stage_test import StageTest
 from hstest.test_case import TestCase
 from hstest.check_result import CheckResult
 
+import os
+import shutil
+
 import sys
 if sys.platform.startswith("win"):
     import _locale
@@ -13,34 +16,101 @@ CheckResult.wrong = lambda feedback: CheckResult(False, feedback)
 
 
 class TextBasedBrowserTest(StageTest):
+
     def generate(self):
         return [
             TestCase(
-                stdin="bloomberg.com\nexit",
-                attach=('Bloomberg', 'New York Times')
+                stdin='bloomberg.com\nbloomberg\nexit',
+                attach=('Bloomberg', 'New York Times', 'bloomberg'),
+                args=['tb_tabs']
             ),
             TestCase(
-                stdin="nytimes.com\nexit",
-                attach=('New York Times', 'Bloomberg')
+                stdin='nytimes.com\nnytimes\nexit',
+                attach=('New York Times', 'Bloomberg', 'nytimes'),
+                args=['tb_tabs']
+            ),
+            TestCase(
+                stdin='nytimescom\nexit',
+                args=['tb_tabs']
+            ),
+            TestCase(
+                stdin='blooomberg1.com\nexit',
+                args=['tb_tabs']
+            ),
+            TestCase(
+                stdin='blooomberg1.com\nnytimes.com\nexit',
+                attach=(None, 'New York Times', 'Bloomberg', 'nytimes'),
+                args=['tb_tabs']
+            ),
+            TestCase(
+                stdin='nytimescom\nbloomberg.com\nexit',
+                attach=(None, 'Bloomberg', 'New York Times', 'bloomberg'),
+                args=['tb_tabs']
             ),
         ]
 
+    def _check_files(self, path_for_tabs: str, right_word: str) -> bool:
+        """
+        Helper which checks that browser saves visited url in files and
+        provides access to them.
+
+        :param path_for_tabs: directory which must contain saved tabs
+        :param right_word: Word-marker which must be in right tab
+        :return: True, if right_words is present in saved tab
+        """
+
+        path, dirs, files = next(os.walk(path_for_tabs))
+
+        for file in files:
+            with open(os.path.join(path_for_tabs, file), 'r') as tab:
+                content = tab.read()
+                if right_word in content:
+                    return True
+
+        return False
+
     def check(self, reply, attach):
-        """
-        Every fake-page contains magic word. Bloomberg fake-page must contain
-        'Bloomberg' and New York Times fake page must contain 'New York Times'
 
-        These test cases check assertions above.
-        """
-        right_word, wrong_word = attach
+        # Incorrect URL
+        if attach is None:
+            if 'error' in reply.lower():
+                return CheckResult.correct()
+            else:
+                return CheckResult.wrong('There was no "error" word, but should be.')
 
-        if wrong_word in reply:
-            return CheckResult.wrong('It seems like you printed wrong variable')
+        # Correct URL
+        if isinstance(attach, tuple):
 
-        if right_word in reply:
-            return CheckResult.correct()
+            if len(attach) == 4:
+                _, *attach = attach
+                if 'error' not in reply.lower():
+                    return CheckResult.wrong('There was no "error" word, but should be.')
 
-        return CheckResult.wrong('You printed neither bloomberg_com nor nytimes_com')
+            right_word, wrong_word, correct_file_name = attach
+
+            path_for_tabs = 'tb_tabs'
+
+            if not os.path.isdir(path_for_tabs):
+                return CheckResult.wrong(
+                    "Can't find a directory \"" + path_for_tabs + "\" "
+                    "in which you should save your web pages.")
+
+            if not self._check_files(path_for_tabs, right_word):
+                return CheckResult.wrong(
+                    "Seems like you did\'n save the web page "
+                    "\"" + right_word + "\" into the "
+                    "directory \"" + path_for_tabs + "\". "
+                    "This file with page should be named \"" + correct_file_name + "\"")
+
+            shutil.rmtree(path_for_tabs)
+
+            if wrong_word in reply:
+                return CheckResult.wrong('It seems like you printed wrong variable')
+
+            if right_word in reply:
+                return CheckResult.correct()
+
+            return CheckResult.wrong('You printed neither bloomberg_com nor nytimes_com')
 
 
 TextBasedBrowserTest('browser.browser').run_tests()

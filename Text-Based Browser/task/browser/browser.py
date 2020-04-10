@@ -1,3 +1,5 @@
+import os
+import sys
 
 nytimes_com = '''
 This New Liquid Is Magnetic, and Mesmerizing
@@ -35,14 +37,49 @@ Twitter and Square Chief Executive Officer Jack Dorsey
 '''
 
 # write your code here
-url = input()
+args = sys.argv
+
+directory = args[1]
+
+if not os.path.exists(directory):
+    os.mkdir(directory)
+
+url = ""
+savedFile = {}
 
 while url != "exit":
-
-    if url == "bloomberg.com":
-        print(bloomberg_com)
-
-    if url == "nytimes.com":
-        print(nytimes_com)
-
     url = input()
+    if "." in url:
+        content = ""
+        found = False
+        if url == "bloomberg.com":
+            print(bloomberg_com)
+            content = bloomberg_com
+            found = True
+
+        if url == "nytimes.com":
+            print(nytimes_com)
+            content = nytimes_com
+            found = True
+
+        if found:
+            filepath = url.split(".")
+            filepath = ".".join(filepath[:-1])
+
+            savedFile[filepath] = url
+
+            with open(os.path.join(directory, url), "w") as f:
+                f.write(content)
+        else:
+            print("Error")
+
+        print()
+    elif url != "exit":
+        if url in savedFile:
+            with open(os.path.join(directory, savedFile[url]), "r") as f:
+                print(f.read())
+        else:
+            print("Error: Incorrect URL")
+        print()
+
+
