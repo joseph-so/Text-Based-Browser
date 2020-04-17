@@ -1,5 +1,6 @@
 import os
 import sys
+from collections import deque
 
 nytimes_com = '''
 This New Liquid Is Magnetic, and Mesmerizing
@@ -40,15 +41,21 @@ Twitter and Square Chief Executive Officer Jack Dorsey
 args = sys.argv
 
 directory = args[1]
+history = deque()
 
 if not os.path.exists(directory):
     os.mkdir(directory)
 
 url = ""
 savedFile = {}
-
-while url != "exit":
-    url = input()
+previousURL = ""
+command = input()
+while command != "exit":
+    if command == "back":
+        url = history.pop()
+    else:
+        previousURL = url
+        url = command
     if "." in url:
         content = ""
         found = False
@@ -81,5 +88,7 @@ while url != "exit":
         else:
             print("Error: Incorrect URL")
         print()
-
+    if command != "back":
+        history.append(previousURL)
+    command = input()
 
