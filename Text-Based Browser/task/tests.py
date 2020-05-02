@@ -18,34 +18,26 @@ CheckResult.wrong = lambda feedback: CheckResult(False, feedback)
 class TextBasedBrowserTest(StageTest):
 
     def generate(self):
+
+        dir_for_files = os.path.join(os.curdir, 'tb_tabs')
         return [
             TestCase(
-                stdin='bloomberg.com\nbloomberg\nexit',
-                attach=('Bloomberg', 'New York Times', 'bloomberg'),
-                args=['tb_tabs']
+                stdin='3.python-requests.org\nexit',
+                attach='requests',
+                args=[dir_for_files]
             ),
             TestCase(
                 stdin='nytimes.com\nnytimes\nexit',
-                attach=('New York Times', 'Bloomberg', 'nytimes'),
-                args=['tb_tabs']
+                attach='The New York Times',
+                args=[dir_for_files]
             ),
             TestCase(
                 stdin='nytimescom\nexit',
-                args=['tb_tabs']
+                args=[dir_for_files]
             ),
             TestCase(
-                stdin='blooomberg1.com\nexit',
-                args=['tb_tabs']
-            ),
-            TestCase(
-                stdin='blooomberg1.com\nnytimes.com\nexit',
-                attach=(None, 'New York Times', 'Bloomberg', 'nytimes'),
-                args=['tb_tabs']
-            ),
-            TestCase(
-                stdin='nytimescom\nbloomberg.com\nexit',
-                attach=(None, 'Bloomberg', 'New York Times', 'bloomberg'),
-                args=['tb_tabs']
+                stdin='bloombergcom\nexit',
+                args=[dir_for_files]
             ),
         ]
 
@@ -59,13 +51,16 @@ class TextBasedBrowserTest(StageTest):
         :return: True, if right_words is present in saved tab
         """
 
-        path, dirs, files = next(os.walk(path_for_tabs))
+        path, dirs, filenames = next(os.walk(path_for_tabs))
 
-        for file in files:
-            with open(os.path.join(path_for_tabs, file), 'r') as tab:
+        for file in filenames:
+
+            with open(os.path.join(path_for_tabs, file), 'r', encoding='utf-8') as tab:
                 content = tab.read()
-                if right_word in content:
-                    return True
+
+                if '</p>' not in content and '</script>' not in content:
+                    if '</div>' not in content and right_word in content:
+                        return True
 
         return False
 
@@ -73,44 +68,30 @@ class TextBasedBrowserTest(StageTest):
 
         # Incorrect URL
         if attach is None:
-            if 'error' in reply.lower():
-                return CheckResult.correct()
+            if '<p>' in reply:
+                return CheckResult.wrong('You haven\'t checked was URL correct')
             else:
-                return CheckResult.wrong('There was no "error" word, but should be.')
+                return CheckResult.correct()
 
         # Correct URL
-        if isinstance(attach, tuple):
+        if isinstance(attach, str):
+            right_word = attach
 
-            if len(attach) == 4:
-                _, *attach = attach
-                if 'error' not in reply.lower():
-                    return CheckResult.wrong('There was no "error" word, but should be.')
-
-            right_word, wrong_word, correct_file_name = attach
-
-            path_for_tabs = 'tb_tabs'
+            path_for_tabs = os.path.join(os.curdir, 'tb_tabs')
 
             if not os.path.isdir(path_for_tabs):
-                return CheckResult.wrong(
-                    "Can't find a directory \"" + path_for_tabs + "\" "
-                    "in which you should save your web pages.")
+                return CheckResult.wrong("There are no directory for tabs")
 
             if not self._check_files(path_for_tabs, right_word):
-                return CheckResult.wrong(
-                    "Seems like you did\'n save the web page "
-                    "\"" + right_word + "\" into the "
-                    "directory \"" + path_for_tabs + "\". "
-                    "This file with page should be named \"" + correct_file_name + "\"")
+                return CheckResult.wrong('There are no correct saved tabs')
 
             shutil.rmtree(path_for_tabs)
 
-            if wrong_word in reply:
-                return CheckResult.wrong('It seems like you printed wrong variable')
+            if '</p>' not in reply and '</div>' not in reply:
+                if right_word in reply:
+                    return CheckResult.correct()
 
-            if right_word in reply:
-                return CheckResult.correct()
-
-            return CheckResult.wrong('You printed neither bloomberg_com nor nytimes_com')
+            return CheckResult.wrong('You haven\'t parsed result of request')
 
 
 TextBasedBrowserTest('browser.browser').run_tests()

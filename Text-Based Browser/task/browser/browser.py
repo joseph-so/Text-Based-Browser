@@ -2,6 +2,7 @@ import os
 import sys
 from collections import deque
 import requests
+from bs4 import BeautifulSoup
 
 # write your code here
 args = sys.argv
@@ -26,15 +27,15 @@ while command != "exit":
 
         r = requests.get(url if url.startswith(("http://", "https://")) else 'https://'+url)
 
-        content = str(r.content)
-
+        content = BeautifulSoup(r.content)
+        print(content.body.get_text())
         filepath = url.split(".")
         filepath = ".".join(filepath[:-1])
 
         savedFile[filepath] = url
 
         with open(os.path.join(directory, url), "w") as f:
-            f.write(content)
+            f.write(content.body.get_text())
 
         print()
     elif url != "exit":
